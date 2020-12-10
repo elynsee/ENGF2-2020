@@ -1,0 +1,249 @@
+Pacman Protocol Specification
+Student Number: 20126456
+==============================
+
+Terminology
+===========
+
+This specification uses the terms MUST, SHOULD, and MAY as defined in
+RFC 2119 [rfc2119] [1]
+
+This specification also uses the following terminologies to distinguish
+between the visting pacman and various game objects:
+
+	- LOCAL : the game object is currently on our local screen
+		  and is a local game object
+	- AWAY : our pacman is currently away on the remote screen
+	- REMOTE : a game object on the remote screen that our AWAY
+		   pacman might interact with
+	- FOREIGN : the other player's pacman when it is visiting 
+
+The pacman protocol runs over the Transmission Control Protocol (TCP),
+using a well known port of 9876. There are twelve message types:
+
+	- MAZE_UPDATE
+	- FOREIGN_PACMAN_ARRIVE
+	- FOREIGN_PACMAN_LEFT
+	- FOREIGN_PACMAN_DIED
+	- PACMAN_GO_HOME
+	- PACMAN_UPDATE
+	- GHOST_UPDATE
+	- FOREIGN_PACMAN_ATE_GHOST
+	- EAT
+	- SCORE_UPDATE
+	- LIVES_UPDATE
+	- STATUS_UPDATE
+
+When the game starts, a successful connection will be established between
+the player's computer and their opponent's computer. When the connection has
+been established, a MAZE_UPDATE message, containing a copy of the maze which
+includes the location of all food and powerpills, MUST be sent to both players.
+This is to ensure that the players are able to see their own maze as well as
+their opponent's maze. Mazes MAY be chosen by inserting '-m' in the command line
+at the start of the game. A random maze will be assigned if no maze is chosen.
+
+Every time a player's pacman is moving, be it LOCAL or AWAY, their local computer
+MUST send a PACMAN_UPDATE message to the remote computer. The remote computer
+receives this and uses it to update your opponent's screen with the display of the
+player's pacman.
+
+If the AWAY pacman is forcibly sent home, a PACMAN_GO_HOME message MUST be sent to
+the local computer to reset the player's pacman to LOCAL.
+
+When a FOREIGN pacman crosses the tunnel to enter the LOCAL maze, a
+FOREIGN_PACMAN_ARRIVE message MUST be sent to the local computer. When the FOREIGN
+pacman leaves the LOCAL maze through the tunnel and returns to the REMOTE maze, a
+FOREIGN_PACMAN_LEFT message MUST be sent to the local computer. If the FOREIGN pacman
+dies in the LOCAL maze, a FOREIGN_PACMAN_DIED message MUST be sent to the local computer.
+
+Whenever a ghost moves or changes state, a GHOST_UPDATE message MUST be sent to both
+the player and the opponent. This enables us to view REMOTE ghosts on the local computer.
+If a FOREIGN pacman eats a LOCAL ghost, a FOREIGN_PACMAN_ATE_GHOST message must be sent.
+
+The LOCAL game board also has states associated with it. These states are defined under
+the class GameMode in pa_model.py. A STATUS_UPDATE message is only sent when there are
+changes between these states. There are six states:
+
+	- STARTUP
+	- CHASE
+	- FRIGHTEN
+	- GAME_OVER
+	- NEXT_LEVEL_WAIT
+	- READY_TO_RESTART
+
+The software is in the STARTUP state while playing the startup jingle. The gameplay has two
+states: CHASE and FRIGHTEN. The CHASE state is the default gameplay state where the pacman is
+being chased by the ghosts. When the pacman eats a powerpill, the FRIGHTEN gameplay state is
+used instead, where the pacman chases the ghosts. When either player runs out of lives, the
+game ends. The losing player's computer goes to GAME_OVER state and sends a status update
+message. The other player also moves into a GAME_OVER state. Under the GAME_OVER state, if the
+restart button "r" is pressed by the local player, the local computer goes to READY_TO_RESTART
+state and sends an update message. The game only restarts when the second player also presses
+"r", sending a replying READY_TO_RESTART status update. When a level is cleared on a screen,
+the screen's system goes to NEXT_LEVEL_WAIT while playing the jingle and waiting for the player
+to get ready. 
+
+
+Message Contents
+================
+The contents of a MAZE_UPDATE message are:
+
+ - Type: MAZE_UPDATE
+
+ - Value: maze (including locations of all the food and powerpills)
+
+
+The contents of a FOREIGN_PACMAN_ARRIVE message are:
+
+ - Type: FOREIGN_PACMAN_ARRIVE
+
+ - Message: There are 2 possible messages that can be sent and the protocol assumes that pacman
+has left LOCAL maze = 0 and pacman has entered LOCAL maze = 1
+
+
+The contents of a FOREIGN_PACMAN_LEFT message are:
+
+ - Type: FOREIGN_PACMAN_LEFT
+
+ - Message: There are 2 possible messages that can be sent and the protocol assumes that pacman
+becomes LOCAL = 0 and pacman remains AWAY = 1
+
+
+The contents of a FOREIGN_PACMAN_DIED message are:
+
+ - Type: FOREIGN_PACMAN_DIED
+
+ - Message: There are 2 possible messages that can be sent and the protocol assumes that AWAY
+pacman is eaten = 0 and AWAY pacman is alive = 1 
+
+
+The contents of a PACMAN_GO_HOME message are:
+
+ - Type: PACMAN_GO_HOME
+
+ - Message: There are 2 possible messages that can be sent and the protocol assumes that AWAY
+pacman must be resetted to LOCAL = 0 and AWAY pacman does not need to be resetted = 1
+
+
+The contents of a PACMAN_UPDATE message are:
+
+ - Type: PACMAN_UPDATE
+
+ - Position: X, Y position of the pacman. X is distance along the screen from 0 to 1024 as the
+pacman moves from left to right from the point of view of player 1. 0 is player 1's end of the
+maze. Y is the distance down the screen from 0 to 1024, where 0 is the top of player 1's screen
+and 1024 is the bottom.
+
+ - Direction: The direction of the pacman can be chosen from 4 directions where the protocol
+assumes that UP = 0, LEFT = 1, RIGHT = 2 and DOWN = 3.
+
+ - Speed: The speed of the pacman 
+
+
+The contents of a GHOST_UPDATE message are:
+
+ - Type: GHOST_UPDATE
+
+ - Value: 
+
+
+The contents of a FOREIGN_PACMAN_ATE_GHOST message are:
+
+ - Type: FOREIGN_PACMAN_ATE_GHOST
+
+ - Value: 
+
+
+The contents of a EAT message are:
+
+ - Type: EAT
+
+ - Value: 
+
+
+The contents of a SCORE_UPDATE message are:
+
+ - Type: SCORE_UPDATE
+
+ - Score: 
+
+
+The contents of a LIVES_UPDATE message are:
+
+ - Type: LIVES_UPDATE
+
+ - Local: Lives remaining for LOCAL pacman. The value ranges from 0 to 
+
+ - Foreign: Lives remaining for FOREIGN pacman.
+ 
+
+The contents of a STATUS_UPDATE message are:
+
+ - Type: STATUS_UPDATE
+
+ - Status: The state of the gameboard can be vary between 6 different states where the protocol
+assumes that STARTUP = 0, CHASE = 1, FRIGHTEN = 2, GAME_OVER = 3, NEXT_LEVEL_WAIT = 4 and
+READY_TO_RESTART = 5.
+
+
+Message Timing
+==============
+
+While the bat is moving, BAT_UPDATE messages SHOULD be sent every
+20ms, as this is the typical reaction time of a human.  If a computer
+cannot maintain 50 frames per second, BAT_UPDATE messages MAY be sent
+once per frame, as it is unreasonable to update the remote computer
+more often than the local one.
+
+Message Encoding
+================
+
+Messages are fixed format, ASCII encoded and separated by a newline
+character.  CR characters MUST NOT be sent.  More than one
+message MAY be send consecutively in a single packet - this may be
+useful to reduce overhead when sending both BAT_UPDATE and BALL_UPDATE
+messages.
+
+INIT message format
+-------------------
+
+INIT messages are of variable length, encoded as follows:
+
+INIT: round=<roundid> random=<random><newline>
+
+"INIT" MUST be capitalized, and MUST be at the start of the connection
+or immediately follow a newline character.  The fields MUST be
+separated by a single space character.  The fields can be in any
+order, and the protocol MUST ignore any unknown fields.
+
+<roundid> is a decimal encoding of the round number, and MUST be in the range 0 to 16384.
+<random> is a decimal encoding of the chosen random number, and MUST be in the range 0 to 4294967296.  
+
+BAT_UPDATE message format
+-------------------------
+
+BAT_UPDATE messages are variable length, encoded as follows:
+
+BAT: position=<bat_position><newline>
+
+"BAT" MUST be capitalized, and MUST immediately follow a newline
+character.  The fields MUST be separated by a single space character.
+The protocol MUST ignore any unknown fields.
+
+<bat_position> is a decimal ASCII encoding of the bat position, and MUST be in the range 0 to 1024.
+
+
+BALL_UPDATE message format
+--------------------------
+
+BALL_UPDATE messages are variable length, encoded as follows:
+
+BALL: xposition=<ball_x_position> yposition=<ball_y_position><newline>
+
+"BALL" MUST be capitalized, and MUST immediately follow a newline
+character.  The fields MUST be separated by a single space character.
+The protocol MUST ignore any unknown fields.
+
+<ball_x_position> and <ball_y_position> are decimal ASCII encodings of the ball x and y positions, and MUST be in the range 0 to 1024.
+
+
